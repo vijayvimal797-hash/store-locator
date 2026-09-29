@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nearby Stores</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f4f8; color: #333; }
+
+        header {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: white; padding: 20px 40px;
+            display: flex; align-items: center; gap: 14px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+        }
+        header .logo { font-size: 28px; }
+        header h1 { font-size: 22px; font-weight: 600; }
+        header p { font-size: 12px; opacity: 0.6; margin-top: 2px; }
+
+        .container { max-width: 1000px; margin: 40px auto; padding: 0 30px; }
+        .back { display: inline-block; margin-bottom: 20px; color: #555;
+                text-decoration: none; font-size: 14px; }
+        .back:hover { color: #1a1a2e; }
+
+        .section-title {
+            font-size: 18px; font-weight: 600; color: #1a1a2e;
+            margin-bottom: 20px; padding-bottom: 10px;
+            border-bottom: 2px solid #e8f0fe;
+        }
+
+        #map {
+            height: 380px; border-radius: 14px;
+            margin-bottom: 32px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+            border: 1px solid #e8edf2;
+        }
+
+        .store-card {
+            background: white; border-radius: 14px;
+            padding: 24px; margin-bottom: 16px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            border: 1px solid #e8edf2;
+            display: flex; justify-content: space-between;
+            align-items: center; gap: 20px;
+            transition: box-shadow 0.2s;
+        }
+        .store-card:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.09); }
+
+        .store-left { display: flex; gap: 16px; align-items: flex-start; }
+
+        .store-icon {
+            width: 48px; height: 48px; border-radius: 12px;
+            background: #e8f0fe; display: flex;
+            align-items: center; justify-content: center;
+            font-size: 22px; flex-shrink: 0;
+        }
+
+        .store-info h3 { font-size: 16px; font-weight: 600; color: #1a1a2e; margin-bottom: 6px; }
+        .store-info p { font-size: 13px; color: #888; margin-bottom: 3px; }
+
+        .badge {
+            display: inline-block; padding: 4px 12px;
+            border-radius: 20px; font-size: 11px;
+            font-weight: 600; margin-top: 8px;
+        }
+        .IN_STOCK { background: #e8f5e9; color: #2E7D32; }
+        .LOW_STOCK { background: #fff8e1; color: #F57F17; }
+        .OUT_OF_STOCK { background: #ffebee; color: #C62828; }
+
+        .store-right { text-align: right; flex-shrink: 0; }
+        .distance { font-size: 22px; font-weight: 700; color: #1a1a2e; }
+        .distance-label { font-size: 11px; color: #aaa; margin-bottom: 8px; }
+        .stock-count { font-size: 13px; color: #666; margin-bottom: 14px; }
+
+        .btn-directions {
+            display: inline-block; background: #1a1a2e; color: white;
+            padding: 9px 18px; border-radius: 8px;
+            text-decoration: none; font-size: 13px; font-weight: 500;
+            transition: background 0.2s;
+        }
+        .btn-directions:hover { background: #2d2d5e; }
+
+        .no-stores {
+            text-align: center; padding: 60px 40px;
+            background: white; border-radius: 14px;
+            color: #aaa; border: 1px solid #e8edf2;
+        }
+        .no-stores h3 { font-size: 18px; margin-bottom: 8px; color: #555; }
+
+        footer { text-align: center; padding: 30px; color: #aaa; font-size: 12px; margin-top: 40px; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="logo">🛍️</div>
+    <div>
+        <h1>StoreLocator</h1>
+        <p>Find products available in stores near you</p>
+    </div>
+</header>
+
+<div class="container">
+    <a class="back" href="/index.html">← Back to Products</a>
+    <div class="section-title">📍 Nearby Stores</div>
+    <div id="map"></div>
+    <div id="storeList"></div>
+</div>
+
+<footer>© 2026 StoreLocator. All rights reserved.</footer>
+
+<script>
+    const params = new URLSearchParams(window.location.search);
+    const productId = params.get('productId');
+    const lat = parseFloat(params.get('lat'));
+    const lng = parseFloat(params.get('lng'));
+
+    const map = L.map('map').setView([lat, lng], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    // User location
+    const userIcon = L.divIcon({
+        html: '📱', className: '', iconSize: [30, 30]
+    });
+    L.marker([lat, lng], { icon: userIcon })
+        .addTo(map)
+        .bindPopup('<b>Your Location</b>')
+        .openPopup();
+
+    fetch(`http://localhost:8080/api/stores/nearby?productId=${productId}&lat=${lat}&lng=${lng}&radius=50`)
+        .then(res => res.json())
+        .then(stores => {
+            const list = document.getElementById('storeList');
+
+            if (stores.length === 0) {
+                list.innerHTML = `
+                    <div class="no-stores">
+                        <div style="font-size:40px;margin-bottom:12px">🏪</div>
+                        <h3>No stores found nearby</h3>
+                        <p>Try a different product or increase the search radius</p>
+                    </div>`;
+                return;
+            }
+
+            stores.forEach(store => {
+                const storeIcon = L.divIcon({
+                    html: '🏪', className: '', iconSize: [30, 30]
+                });
+
+                L.marker([store.latitude, store.longitude], { icon: storeIcon })
+                    .addTo(map)
+                    .bindPopup(`<b>${store.storeName}</b><br>${store.city}<br>
+                                <span style="color:${store.status === 'IN_STOCK' ? 'green' : 'orange'}">
+                                ${store.status.replace('_', ' ')}</span>`);
+
+                const statusLabel = store.status.replace('_', ' ');
+                list.innerHTML += `
+                    <div class="store-card">
+                        <div class="store-left">
+                            <div class="store-icon">🏪</div>
+                            <div class="store-info">
+                                <h3>${store.storeName}</h3>
+                                <p>📍 ${store.address}, ${store.city}</p>
+                                <p>📞 ${store.phone}</p>
+                                <p>🕐 ${store.openingTime} – ${store.closingTime}</p>
+                                <span class="badge ${store.status}">${statusLabel}</span>
+                            </div>
+                        </div>
+                        <div class="store-right">
+                            <div class="distance">${store.distanceKm} km</div>
+                            <div class="distance-label">from your location</div>
+                            <div class="stock-count">Stock: ${store.stockQuantity} units</div>
+                            <a class="btn-directions"
+                               href="https://www.google.com/maps/dir/?api=1&destination=${store.latitude},${store.longitude}"
+                               target="_blank">🗺️ Get Directions</a>
+                        </div>
+                    </div>`;
+            });
+        });
+</script>
+</body>
+</html>

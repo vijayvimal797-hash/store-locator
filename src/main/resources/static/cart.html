@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Cart - StoreLocator</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f4f8; color: #333; }
+
+        header {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: white; padding: 20px 40px;
+            display: flex; align-items: center; gap: 14px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+        }
+        header .logo { font-size: 28px; }
+        header h1 { font-size: 22px; font-weight: 600; }
+        header p { font-size: 12px; opacity: 0.6; margin-top: 2px; }
+
+        .container { max-width: 900px; margin: 40px auto; padding: 0 30px; }
+        .back { display: inline-block; margin-bottom: 20px; color: #555;
+                text-decoration: none; font-size: 14px; }
+        .back:hover { color: #1a1a2e; }
+
+        .section-title {
+            font-size: 18px; font-weight: 600; color: #1a1a2e;
+            margin-bottom: 24px; padding-bottom: 10px;
+            border-bottom: 2px solid #e8f0fe;
+        }
+
+        .cart-item {
+            background: white; border-radius: 14px;
+            padding: 20px; margin-bottom: 16px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            border: 1px solid #e8edf2;
+            display: flex; align-items: center; gap: 20px;
+        }
+
+        .cart-item img {
+            width: 90px; height: 90px;
+            object-fit: cover; border-radius: 10px;
+            flex-shrink: 0;
+        }
+
+        .item-info { flex: 1; }
+        .item-info h3 { font-size: 16px; font-weight: 600; color: #1a1a2e; margin-bottom: 4px; }
+        .item-info .price { font-size: 18px; font-weight: 700; color: #1a1a2e; margin-top: 8px; }
+
+        .qty-controls { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+        .qty-btn {
+            width: 30px; height: 30px; border-radius: 6px;
+            border: 1.5px solid #e0e0e0; background: white;
+            font-size: 16px; cursor: pointer; display: flex;
+            align-items: center; justify-content: center;
+            transition: background 0.2s;
+        }
+        .qty-btn:hover { background: #f0f4f8; }
+        .qty-num { font-size: 15px; font-weight: 600; min-width: 20px; text-align: center; }
+
+        .item-total { text-align: right; flex-shrink: 0; }
+        .item-total .total { font-size: 18px; font-weight: 700; color: #1a1a2e; }
+        .remove-btn {
+            margin-top: 10px; background: none; border: none;
+            color: #e53935; font-size: 13px; cursor: pointer;
+            font-weight: 500;
+        }
+        .remove-btn:hover { text-decoration: underline; }
+
+        .summary {
+            background: white; border-radius: 14px;
+            padding: 24px; margin-top: 20px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            border: 1px solid #e8edf2;
+        }
+        .summary-row {
+            display: flex; justify-content: space-between;
+            padding: 10px 0; font-size: 15px; color: #555;
+            border-bottom: 1px solid #f0f4f8;
+        }
+        .summary-row.total {
+            font-size: 18px; font-weight: 700;
+            color: #1a1a2e; border-bottom: none;
+        }
+        .checkout-btn {
+            width: 100%; padding: 14px; margin-top: 16px;
+            background: #1a1a2e; color: white;
+            border: none; border-radius: 10px;
+            font-size: 15px; font-weight: 600;
+            cursor: pointer; transition: background 0.2s;
+        }
+        .checkout-btn:hover { background: #2d2d5e; }
+
+        .empty-cart {
+            text-align: center; padding: 60px;
+            background: white; border-radius: 14px;
+            border: 1px solid #e8edf2;
+        }
+        .empty-cart div { font-size: 50px; margin-bottom: 16px; }
+        .empty-cart h3 { font-size: 18px; color: #555; margin-bottom: 8px; }
+        .empty-cart a {
+            display: inline-block; margin-top: 16px;
+            background: #1a1a2e; color: white;
+            padding: 11px 24px; border-radius: 8px;
+            text-decoration: none; font-size: 14px; font-weight: 500;
+        }
+
+        footer { text-align: center; padding: 30px;
+                 color: #aaa; font-size: 12px; margin-top: 40px; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="logo">🛍️</div>
+    <div style="flex:1">
+        <h1>StoreLocator</h1>
+        <p>Find products available in stores near you</p>
+    </div>
+    <div style="text-align:right">
+        <span style="font-size:13px;opacity:0.8" id="welcomeMsg"></span>
+    </div>
+</header>
+
+<div class="container">
+    <a class="back" href="/index.html">← Continue Shopping</a>
+    <div class="section-title">🛒 My Cart</div>
+    <div id="cartItems"></div>
+</div>
+
+<footer>© 2026 StoreLocator. All rights reserved.</footer>
+
+<script>
+    if (!localStorage.getItem('userId')) {
+        window.location.href = 'login.html';
+    }
+
+    document.getElementById('welcomeMsg').textContent =
+        'Hello, ' + localStorage.getItem('name') + '!';
+
+    const userId = localStorage.getItem('userId');
+
+    function loadCart() {
+        fetch(`http://localhost:8080/api/cart/${userId}`)
+            .then(res => res.json())
+            .then(items => {
+                const container = document.getElementById('cartItems');
+
+                if (items.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-cart">
+                            <div>🛒</div>
+                            <h3>Your cart is empty!</h3>
+                            <p style="color:#aaa;font-size:14px">Add some products to get started</p>
+                            <a href="/index.html">Browse Products</a>
+                        </div>`;
+                    return;
+                }
+
+                let subtotal = 0;
+                let html = '';
+
+                items.forEach(item => {
+                    subtotal += item.total;
+                    html += `
+                        <div class="cart-item">
+                            <img src="${item.imageUrl}"
+                                 onerror="this.src='https://via.placeholder.com/90?text=No+Image'"/>
+                            <div class="item-info">
+                                <h3>${item.productName}</h3>
+                                <div class="price">₹${item.price.toLocaleString()}</div>
+                                <div class="qty-controls">
+                                    <button class="qty-btn"
+                                        onclick="updateQty(${item.cartId}, ${item.quantity - 1})">−</button>
+                                    <span class="qty-num">${item.quantity}</span>
+                                    <button class="qty-btn"
+                                        onclick="updateQty(${item.cartId}, ${item.quantity + 1})">+</button>
+                                </div>
+                            </div>
+                            <div class="item-total">
+                                <div class="total">₹${item.total.toLocaleString()}</div>
+                                <button class="remove-btn"
+                                    onclick="removeItem(${item.cartId})">🗑 Remove</button>
+                            </div>
+                        </div>`;
+                });
+
+                const delivery = subtotal > 500 ? 0 : 40;
+                const grandTotal = subtotal + delivery;
+
+                html += `
+                    <div class="summary">
+                        <div class="summary-row">
+                            <span>Subtotal (${items.length} items)</span>
+                            <span>₹${subtotal.toLocaleString()}</span>
+                        </div>
+                        <div class="summary-row">
+                            <span>Delivery</span>
+                            <span>${delivery === 0 ? 'FREE' : '₹' + delivery}</span>
+                        </div>
+                        <div class="summary-row total">
+                            <span>Total Amount</span>
+                            <span>₹${grandTotal.toLocaleString()}</span>
+                        </div>
+                        <button class="checkout-btn">
+                            Proceed to Checkout →
+                        </button>
+                    </div>`;
+
+                container.innerHTML = html;
+            });
+    }
+
+    function removeItem(cartId) {
+        fetch(`http://localhost:8080/api/cart/remove/${cartId}`, {
+            method: 'DELETE'
+        }).then(() => loadCart());
+    }
+
+    function updateQty(cartId, quantity) {
+        fetch(`http://localhost:8080/api/cart/update/${cartId}?quantity=${quantity}`, {
+            method: 'PUT'
+        }).then(() => loadCart());
+    }
+
+    loadCart();
+</script>
+</body>
+</html>

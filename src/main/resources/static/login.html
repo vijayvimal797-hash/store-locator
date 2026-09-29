@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - StoreLocator</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #e8f0fe, #fce4ec);
+            min-height: 100vh;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        .card {
+            background: white; border-radius: 16px;
+            padding: 40px; width: 100%; max-width: 420px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+
+        .logo { text-align: center; margin-bottom: 24px; }
+        .logo div { font-size: 40px; margin-bottom: 8px; }
+        .logo h1 { font-size: 22px; font-weight: 700; color: #1a1a2e; }
+        .logo p { font-size: 13px; color: #aaa; margin-top: 4px; }
+
+        .form-group { margin-bottom: 18px; }
+        label { display: block; font-size: 13px; font-weight: 600;
+                color: #444; margin-bottom: 6px; }
+        input {
+            width: 100%; padding: 12px 14px;
+            border: 1.5px solid #e0e0e0; border-radius: 8px;
+            font-size: 14px; outline: none;
+            transition: border 0.2s;
+        }
+        input:focus { border-color: #1a1a2e; }
+
+        .btn {
+            width: 100%; padding: 13px;
+            background: #1a1a2e; color: white;
+            border: none; border-radius: 8px;
+            font-size: 15px; font-weight: 600;
+            cursor: pointer; margin-top: 6px;
+            transition: background 0.2s;
+        }
+        .btn:hover { background: #2d2d5e; }
+
+        .msg { text-align: center; margin-top: 14px;
+               font-size: 13px; color: red; }
+        .msg.success { color: green; }
+
+        .bottom { text-align: center; margin-top: 20px;
+                  font-size: 13px; color: #888; }
+        .bottom a { color: #1a1a2e; font-weight: 600; text-decoration: none; }
+        .bottom a:hover { text-decoration: underline; }
+
+        .divider { border: none; border-top: 1px solid #f0f0f0; margin: 20px 0; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <div class="logo">
+        <div>🛍️</div>
+        <h1>StoreLocator</h1>
+        <p>Sign in to your account</p>
+    </div>
+
+    <div class="form-group">
+        <label>Username</label>
+        <input type="text" id="username" placeholder="Enter your username" />
+    </div>
+
+    <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="password" placeholder="Enter your password" />
+    </div>
+
+    <button class="btn" onclick="login()">Sign In</button>
+    <div class="msg" id="msg"></div>
+
+    <hr class="divider"/>
+    <div class="bottom">
+        Don't have an account? <a href="register.html">Register here</a>
+    </div>
+</div>
+
+<script>
+    // If already logged in, go to home
+    if (localStorage.getItem('userId')) {
+        window.location.href = 'index.html';
+    }
+
+    function login() {
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value.trim();
+        const msg = document.getElementById('msg');
+
+        if (!username || !password) {
+            msg.textContent = 'Please fill in all fields!';
+            return;
+        }
+
+        fetch('http://localhost:8080/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.message === 'Login successful!') {
+                localStorage.setItem('userId', data.userId);
+                localStorage.setItem('username', data.username);
+                localStorage.setItem('name', data.name);
+                msg.className = 'msg success';
+                msg.textContent = 'Login successful! Redirecting...';
+                setTimeout(() => window.location.href = 'index.html', 1000);
+            } else {
+                msg.textContent = data.message;
+            }
+        })
+        .catch(() => msg.textContent = 'Something went wrong!');
+    }
+</script>
+</body>
+</html>
